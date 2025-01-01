@@ -89,6 +89,7 @@ def export_to_pdf(data):
 
     except Exception as e:
         st.error(f"Error while generating PDF: {str(e)}")
+st.write(df.head())  # Show the first few rows of the DataFrame
 
 
 # Get the customer data from GitHub
