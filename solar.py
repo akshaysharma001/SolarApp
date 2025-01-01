@@ -89,12 +89,25 @@ def export_to_pdf(data):
 
     except Exception as e:
         st.error(f"Error while generating PDF: {str(e)}")
-st.write(df.head())  # Show the first few rows of the DataFrame
 
 
 # Get the customer data from GitHub
 df = get_github_file_content()
 # Normalize phone number column
+
+
+# Check if DataFrame is empty
+if df.empty:
+    st.error("No customer data found.")
+else:
+    # Check if 'phone' column exists before normalizing
+    if "phone" in df.columns:
+        df["phone"] = df["phone"].astype(str).str.strip()
+    else:
+        st.warning("'phone' column is missing in the data.")
+
+
+
 df["phone"] = df["phone"].astype(str).str.strip()
 
 # Streamlit app title
