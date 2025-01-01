@@ -92,6 +92,11 @@ def export_to_pdf(data):
 
 # Get the customer data from GitHub
 df = get_github_file_content()
+# Check if the 'phone' column exists in the dataframe
+if 'phone' in df.columns:
+    df["phone"] = df["phone"].astype(str).str.strip()
+else:
+    st.error("'phone' column is missing from the data!")
 
 # Normalize phone number column
 df["phone"] = df["phone"].astype(str).str.strip()
