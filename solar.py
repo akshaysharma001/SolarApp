@@ -354,7 +354,7 @@ with st.sidebar:
                     selected_row = st.selectbox("Select Customer to Edit/Delete", customer_found.index.tolist())
                     if st.button("Delete Customer Record"):
                         df = df.drop(selected_row)
-                        df.to_excel(file_path, index=False)
+                        df.to_excel(GITHUB_REPO_URL, index=False)
                         st.success("Customer record deleted successfully!")
                     if st.button("Edit Customer Record"):
                         st.warning("Edit functionality to be added.")
