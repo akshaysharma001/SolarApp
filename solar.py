@@ -189,19 +189,46 @@ def export_to_pdf(data):
         st.error(f"Error while generating PDF: {str(e)}")
 
 
+
 # Load data
 df = load_data()
 
 # Normalize phone number column
 df["phone"] = df["phone"].astype(str).str.strip()
 
-# Streamlit app title
-st.title("Customer Solar Panel Data Management System")
-
 # Your existing Streamlit code follows...
 
 # Streamlit app title
 st.title("Customer Solar Panel Data Management System")
+
+# Function to export customer data to Excel using pandas (openpyxl engine)
+import io
+def export_to_excel(data):
+    # Create an in-memory Excel file
+    excel_output = io.BytesIO()
+    
+    with pd.ExcelWriter(excel_output, engine='openpyxl') as writer:
+        # Write the DataFrame to the Excel writer
+        data.to_excel(writer, index=False, sheet_name='Customer Data')
+    
+    # Seek to the beginning of the file after writing
+    excel_output.seek(0)
+    return excel_output
+
+# Streamlit app
+st.title("Admin Dashboard")
+st.write("You can download the customer database in Excel format.")
+
+# Add a button for downloading Excel file
+if st.button("Download Customer Data as Excel"):
+    excel_file1 = export_to_excel(df)
+    st.download_button(
+        label="Download Excel File",
+        data=excel_file1,
+        file_name="customer_data.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
 
 # Initialize session state to store search results and user information
 if "search_results" not in st.session_state:
@@ -241,6 +268,8 @@ else:
         st.session_state.logged_in = False
         st.session_state.user_email = ""
         st.success("Logged out successfully!")
+
+
 
 # Tabs for different functionalities
 tab1, tab2, tab3, tab4 = st.tabs(["Add Customer", "Search Customer by Name", "Search by Phone Number", "View All Records"])
