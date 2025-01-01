@@ -1,4 +1,5 @@
-
+import os 
+os.system('pip install reportlab')
 import streamlit as st
 import pandas as pd
 import requests
