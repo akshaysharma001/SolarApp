@@ -1,5 +1,7 @@
 pandas
 requests
 streamlit
-reportlab==3.6.0
+reportlab
+reportlib
+git+https://github.com/reportlab.git@main
 openpyxl
