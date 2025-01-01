@@ -363,4 +363,3 @@ with st.sidebar:
 
     else:
         st.error("Please log in to view all customer records.")
-
