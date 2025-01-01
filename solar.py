@@ -1,5 +1,3 @@
-import os 
-os.system('pip install reportlab')
 import streamlit as st
 import pandas as pd
 import requests
@@ -9,60 +7,34 @@ from reportlab.pdfgen import canvas
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 
-# GitHub repository details
-GITHUB_REPO = "akshaysharma001/SolarApp"
-#GITHUB_FILE_PATH = "path/to/your/customer_data.xlsx"
-GITHUB_API_URL = f"https://api.github.com/repos/akshaysharma001/contents/Solar.py"
+# GitHub file raw URL (replace with your GitHub raw file URL)
+GITHUB_REPO_URL = "https://raw.githubusercontent.com/akshaysharma001/SolarApp/main/customer_data.xlsx"
 
-GITHUB_FILE_PATH = "https://raw.githubusercontent.com/akshaysharma001/SolarApp/main/customer_data.xlsx"
-
-
-
-# Function to fetch file content from GitHub
-def get_github_file_content():
-    response = requests.get(GITHUB_API_URL)
-    if response.status_code == 200:
-        file_content = response.json()['content']
-        file_data = BytesIO(requests.utils.base64_b64decode(file_content))
-        return pd.read_excel(file_data)
-    else:
-        st.error("Error fetching file from GitHub.")
-        return pd.DataFrame()
-
-# Function to upload file to GitHub
-def upload_to_github(file_content, commit_message="Update file"):
-    headers = {
-        "Authorization": "Bearer YOUR_GITHUB_TOKEN",
-        "Accept": "application/vnd.github.v3+json",
-    }
-
-    response = requests.get(GITHUB_API_URL)
-    if response.status_code == 200:
-        sha = response.json()['sha']
-    else:
-        sha = None
-
-    upload_url = GITHUB_API_URL
-    data = {
-        "message": commit_message,
-        "content": requests.utils.base64_b64encode(file_content).decode(),
-        "sha": sha,
-    }
-    response = requests.put(upload_url, headers=headers, json=data)
-
-    if response.status_code == 201:
-        st.success("File uploaded successfully!")
-    else:
-        st.error("Error uploading file to GitHub.")
+# Function to load data from GitHub
+def load_data():
+    try:
+        response = requests.get(GITHUB_REPO_URL)
+        response.raise_for_status()
+        file_content = BytesIO(response.content)
+        return pd.read_excel(file_content)
+    except Exception as e:
+        st.error(f"Error loading data from GitHub: {str(e)}")
+        # Return an empty DataFrame with predefined columns if file doesn't exist
+        return pd.DataFrame(columns=[
+            "date", "name", "address", "phone", "email", "panel_capacity",
+            "solar_panel_company", "solar_panel_type", "solar_panel_category",
+            "inverter_company", "inverter_category", "inverter_phase",
+            "inverter_type", "mounting_roof", "mounting_material",
+            "fixing_material", "earthing", "wiring", "dcdb_box",
+            "acdb_box", "insulation_material", "panel_cleaning_system",
+            "employee_name", "employee_email"
+        ])
 
 # Function to export the data to a PDF
 def export_to_pdf(data):
     try:
-        # Update PDF path
-        pdf_output_path = "/tmp/customer_records.pdf"  # This will save the PDF in the Streamlit app's temporary directory
-
-        # Create PDF document using SimpleDocTemplate (tabular format)
-        pdf = SimpleDocTemplate(pdf_output_path, pagesize=letter)
+        pdf_output = BytesIO()
+        pdf = SimpleDocTemplate(pdf_output, pagesize=letter)
         elements = []
 
         # Prepare data for the table
@@ -85,30 +57,27 @@ def export_to_pdf(data):
         elements.append(table)
         pdf.build(elements)
 
-        st.success(f"PDF saved successfully! You can download it from [here](file:///{pdf_output_path})")
+        st.success("PDF generated successfully! Click the button below to download it.")
+        st.download_button(
+            label="Download PDF",
+            data=pdf_output.getvalue(),
+            file_name="customer_records.pdf",
+            mime="application/pdf"
+        )
 
     except Exception as e:
         st.error(f"Error while generating PDF: {str(e)}")
 
+# Load data
+df = load_data()
 
-# Get the customer data from GitHub
-df = get_github_file_content()
 # Normalize phone number column
-
-
-# Check if DataFrame is empty
-if df.empty:
-    st.error("No customer data found.")
-else:
-    # Check if 'phone' column exists before normalizing
-    if "phone" in df.columns:
-        df["phone"] = df["phone"].astype(str).str.strip()
-    else:
-        st.warning("'phone' column is missing in the data.")
-
-
-
 df["phone"] = df["phone"].astype(str).str.strip()
+
+# Streamlit app title
+st.title("Customer Solar Panel Data Management System")
+
+# Your existing Streamlit code follows...
 
 # Streamlit app title
 st.title("Customer Solar Panel Data Management System")
@@ -229,99 +198,169 @@ with tab1:
                     new_row_df = pd.DataFrame([new_entry])
                     df = pd.concat([df, new_row_df], ignore_index=True)
 
-                    # Save DataFrame to GitHub
-                    file_content = df.to_excel(index=False)
-                    upload_to_github(file_content)
+                    # Save DataFrame to Excel
+                    df.to_excel(file_path, index=False)
                     st.success("Customer data saved successfully!")
     else:
         st.error("Please log in to add customer details.")
 
-# Tabs for the other functionalities (search, view all records, etc.) will be similar, making sure that file updates and reading from GitHub are handled accordingly.
-
-
-
-# Tabs for different functionalities
-tab1, tab2, tab3, tab4 = st.tabs(["Add Customer", "Search Customer by Name", "Search by Phone Number", "View All Records"])
-
-# Tab 1: Add Customer Details
-with tab1:
+# Tab 2: Search Customer Details by Name
+with tab2:
     if st.session_state.logged_in:
-        with st.form("customer_form"):
-            st.header("Enter Customer Details")
+        st.header("Search Customer by Name")
+        
+        with st.form("search_form_name"):
+            search_name = st.text_input("Enter Customer Name to Search")
 
-            # Form fields
-            date = st.date_input("Date")
-            name = st.text_input("Customer Name")
-            address = st.text_area("Address")
-            phone = st.text_input("Phone Number")
-            email = st.text_input("Email Address")
+            if st.form_submit_button("Search"):
+                if search_name:
+                    # Normalize search input
+                    search_name = search_name.strip()
 
-            # Dropdown fields
-            panel_capacity = st.selectbox("Panel Capacity (KWH)", ["1 KW", "2 KW", "5 KW", "10 KW"])
-            solar_panel_company = st.selectbox("Solar Panel Company", ["Company A", "Company B", "Company C"])
-            solar_panel_type = st.selectbox("Solar Panel Type", ["Type 1", "Type 2", "Type 3"])
-            solar_panel_category = st.selectbox("Solar Panel Category", ["Category 1", "Category 2", "Category 3"])
-            inverter_company = st.selectbox("Inverter Company", ["Inverter Co A", "Inverter Co B", "Inverter Co C"])
-            inverter_category = st.selectbox("Inverter Category", ["Category A", "Category B", "Category C"])
-            inverter_phase = st.selectbox("Inverter Phase", ["Single Phase", "Three Phase"])
-            inverter_type = st.selectbox("Inverter Type", ["Type A", "Type B"])
-            mounting_roof = st.selectbox("Mounting Roof", ["Flat Roof", "Sloped Roof"])
-            mounting_material = st.selectbox("Mounting Material", ["Material A", "Material B"])
-            fixing_material = st.selectbox("Fixing Material", ["Material X", "Material Y"])
-            earthing = st.selectbox("Earthing", ["Earthing Type 1", "Earthing Type 2"])
-            wiring = st.selectbox("Wiring", ["Wiring Type A", "Wiring Type B"])
-            dcdb_box = st.selectbox("DCDB Box", ["DCDB Type 1", "DCDB Type 2"])
-            acdb_box = st.selectbox("ACDB Box", ["ACDB Type 1", "ACDB Type 2"])
-            insulation_material = st.selectbox("Insulation Material", ["Material 1", "Material 2"])
-            panel_cleaning_system = st.selectbox("Panel Cleaning System", ["System A", "System B"])
-            employee_name = st.selectbox("Employee Name", ["Employee 1", "Employee 2", "Employee 3"])
-            employee_email = st.selectbox("Employee Email Address", ["emp1@example.com", "emp2@example.com", "emp3@example.com"])
+                    # Filter data by customer name, depending on the logged-in employee
+                    if st.session_state.user_email == "admin":
+                        result = df[df["name"].str.contains(search_name, case=False, na=False)]
+                    else:
+                        result = df[(df["name"].str.contains(search_name, case=False, na=False)) & (df["employee_email"] == st.session_state.user_email)]
 
-            # Form submission
-            submitted = st.form_submit_button("Save")
-
-            if submitted:
-                # Ensure the employee_email is the logged-in user email
-                if st.session_state.user_email != "admin" and st.session_state.user_email != employee_email:
-                    st.error("You can only add customers for your own account.")
+                    if not result.empty:
+                        # Store search results in session state
+                        st.session_state.search_results = result
+                        st.write("Customer Details:")
+                        st.dataframe(result)
+                    else:
+                        st.warning("No records found for the given name.")
                 else:
-                    # Create a new entry
-                    new_entry = {
-                        "date": date,
-                        "name": name,
-                        "address": address,
-                        "phone": phone,
-                        "email": email,
-                        "panel_capacity": panel_capacity,
-                        "solar_panel_company": solar_panel_company,
-                        "solar_panel_type": solar_panel_type,
-                        "solar_panel_category": solar_panel_category,
-                        "inverter_company": inverter_company,
-                        "inverter_category": inverter_category,
-                        "inverter_phase": inverter_phase,
-                        "inverter_type": inverter_type,
-                        "mounting_roof": mounting_roof,
-                        "mounting_material": mounting_material,
-                        "fixing_material": fixing_material,
-                        "earthing": earthing,
-                        "wiring": wiring,
-                        "dcdb_box": dcdb_box,
-                        "acdb_box": acdb_box,
-                        "insulation_material": insulation_material,
-                        "panel_cleaning_system": panel_cleaning_system,
-                        "employee_name": employee_name,
-                        "employee_email": employee_email,
-                    }
-
-                    # Append to DataFrame using pd.concat()
-                    new_row_df = pd.DataFrame([new_entry])
-                    df = pd.concat([df, new_row_df], ignore_index=True)
-
-                    # Save DataFrame to GitHub
-                    file_content = df.to_excel(index=False)
-                    upload_to_github(file_content)
-                    st.success("Customer data saved successfully!")
+                    st.error("Please enter a name to search.")
+        
+        # Check if search results exist and show export button
+        if "search_results" in st.session_state and not st.session_state.search_results.empty:
+            if st.button("Export to PDF - Search by Name"):
+                export_to_pdf(st.session_state.search_results)
     else:
-        st.error("Please log in to add customer details.")
+        st.error("Please log in to search for customers.")
 
-# Tabs for the other functionalities (search, view all records, etc.) will be similar, making sure that file updates and reading from GitHub are handled accordingly.
+# Tab 3: Search Customer Details by Phone Number
+with tab3:
+    if st.session_state.logged_in:
+        st.header("Search Customer by Phone Number")
+        
+        with st.form("search_form_phone"):
+            search_phone = st.text_input("Enter Phone Number to Search")
+
+            if st.form_submit_button("Search by Phone"):
+                if search_phone:
+                    # Normalize search input
+                    search_phone = search_phone.strip()
+
+                    # Filter data by phone number
+                    if st.session_state.user_email == "admin":
+                        result = df[df["phone"] == search_phone]
+                    else:
+                        result = df[(df["phone"] == search_phone) & (df["employee_email"] == st.session_state.user_email)]
+
+                    if not result.empty:
+                        # Store search results in session state
+                        st.session_state.search_results = result
+                        st.write("Customer Details:")
+                        st.dataframe(result)
+                    else:
+                        st.warning("No records found for the given phone number.")
+                else:
+                    st.error("Please enter a phone number to search.")
+        
+        # Check if search results exist and show export button
+        if "search_results" in st.session_state and not st.session_state.search_results.empty:
+            if st.button("Export to PDF - Search by Phone"):
+                export_to_pdf(st.session_state.search_results)
+    else:
+        st.error("Please log in to search for customers.")
+
+# Tab 4: View All Records
+with tab4:
+    if st.session_state.logged_in:
+        st.header("View All Customer Records")
+
+        if st.session_state.user_email == "admin":
+            result = df
+        else:
+            result = df[df["employee_email"] == st.session_state.user_email]
+
+        # Display all records with an option to search by phone number
+        st.dataframe(result)
+
+        # Search by phone functionality
+        search_phone_all = st.text_input("Search by Phone Number (for all records)")
+        if search_phone_all:
+            filtered_result = result[result["phone"].str.contains(search_phone_all, na=False)]
+            st.dataframe(filtered_result)
+
+        # Export to PDF for all records
+        if st.session_state.user_email == "admin":
+            # Export Button - Always Visible for Admin
+            st.subheader("Export All Records to PDF")
+            if st.button("Export All Records to PDF"):
+                export_to_pdf(result)
+
+# Tab 5: Admin Management Module
+with st.sidebar:
+    if st.session_state.logged_in and st.session_state.user_email == "admin":
+        st.header("Admin Management")
+        # Admin Management Module for updating and adding values to dropdowns
+        tab5 = st.selectbox("Choose an action", ["Manage Dropdowns", "Manage Records"])
+        
+        if tab5 == "Manage Dropdowns":
+            st.subheader("Manage Dropdown Options")
+
+            # Panel Capacity Dropdown
+            panel_capacity_options = ["1 KW", "2 KW", "5 KW", "10 KW"]
+            new_panel_capacity = st.text_input("Add New Panel Capacity")
+            if st.button("Add Panel Capacity Option"):
+                if new_panel_capacity:
+                    panel_capacity_options.append(new_panel_capacity)
+                    st.success(f"Added '{new_panel_capacity}' to Panel Capacity options!")
+            
+            remove_panel_capacity = st.selectbox("Remove Panel Capacity Option", panel_capacity_options)
+            if st.button("Remove Panel Capacity Option"):
+                if remove_panel_capacity:
+                    panel_capacity_options.remove(remove_panel_capacity)
+                    st.success(f"Removed '{remove_panel_capacity}' from Panel Capacity options!")
+
+            # Solar Panel Company Dropdown
+            solar_panel_company_options = ["Company A", "Company B", "Company C"]
+            new_solar_panel_company = st.text_input("Add New Solar Panel Company")
+            if st.button("Add Solar Panel Company"):
+                if new_solar_panel_company:
+                    solar_panel_company_options.append(new_solar_panel_company)
+                    st.success(f"Added '{new_solar_panel_company}' to Solar Panel Company options!")
+            
+            remove_solar_panel_company = st.selectbox("Remove Solar Panel Company", solar_panel_company_options)
+            if st.button("Remove Solar Panel Company"):
+                if remove_solar_panel_company:
+                    solar_panel_company_options.remove(remove_solar_panel_company)
+                    st.success(f"Removed '{remove_solar_panel_company}' from Solar Panel Company options!")
+
+            # Similar logic can be added for other dropdowns like solar_panel_type, inverter_company, etc.
+
+        elif tab5 == "Manage Records":
+            st.subheader("Manage Customer Records")
+            # Allow the admin to search and edit/delete customer records directly
+            search_customer_by_name = st.text_input("Enter Customer Name to Edit/Delete")
+            if st.button("Search Customer"):
+                customer_found = df[df["name"].str.contains(search_customer_by_name, case=False, na=False)]
+                if not customer_found.empty:
+                    st.dataframe(customer_found)
+                    # Provide options to edit or delete customer records here
+                    selected_row = st.selectbox("Select Customer to Edit/Delete", customer_found.index.tolist())
+                    if st.button("Delete Customer Record"):
+                        df = df.drop(selected_row)
+                        df.to_excel(file_path, index=False)
+                        st.success("Customer record deleted successfully!")
+                    if st.button("Edit Customer Record"):
+                        st.warning("Edit functionality to be added.")
+                else:
+                    st.warning("Customer not found!")
+
+    else:
+        st.error("Please log in to view all customer records.")
+
