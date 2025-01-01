@@ -3,16 +3,10 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.pagesizes import letter, inch
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
-
-
 import streamlit as st
 import pandas as pd
 import requests
 from io import BytesIO
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 
 # GitHub file raw URL (replace with your GitHub raw file URL)
 GITHUB_REPO_URL = "https://raw.githubusercontent.com/akshaysharma001/SolarApp/main/customer_data.xlsx"
@@ -215,19 +209,6 @@ def export_to_excel(data):
     excel_output.seek(0)
     return excel_output
 
-# Streamlit app
-st.title("Admin Dashboard")
-st.write("You can download the customer database in Excel format.")
-
-# Add a button for downloading Excel file
-if st.button("Download Customer Data as Excel"):
-    excel_file1 = export_to_excel(df)
-    st.download_button(
-        label="Download Excel File",
-        data=excel_file1,
-        file_name="customer_data.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
 
 
 # Initialize session state to store search results and user information
@@ -251,6 +232,9 @@ if not st.session_state.logged_in:
             st.session_state.logged_in = True
             st.session_state.user_email = "admin"
             st.success("Logged in as Admin!")
+
+
+            
         elif user_email != "":
             # Assuming employee records are associated with their email
             if user_email in df['employee_email'].values:
@@ -272,7 +256,7 @@ else:
 
 
 # Tabs for different functionalities
-tab1, tab2, tab3, tab4 = st.tabs(["Add Customer", "Search Customer by Name", "Search by Phone Number", "View All Records"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["Add Customer", "Search Customer by Name", "Search by Phone Number", "View All Records","Download Excel Database"])
 
 # Tab 1: Add Customer Details
 with tab1:
@@ -449,7 +433,8 @@ with tab4:
 
         # Display all records with an option to search by phone number
         st.dataframe(result)
-
+                    # Streamlit app
+        
         # Search by phone functionality
         search_phone_all = st.text_input("Search by Phone Number (for all records)")
         if search_phone_all:
@@ -462,6 +447,29 @@ with tab4:
             st.subheader("Export All Records to PDF")
             if st.button("Export All Records to PDF"):
                 export_to_pdf(result)
+
+# Tab 5: download excel
+with tab5:
+    if st.session_state.logged_in:
+        st.header("You can download the customer database in Excel format")
+
+        if st.session_state.user_email == "admin":
+                # Add a button for downloading Excel file
+            if st.button("Download Customer Data as Excel"):
+                    excel_file1 = export_to_excel(df)
+                    st.download_button(
+                    label="Download Excel File",
+                    data=excel_file1,
+                    file_name="customer_data.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+        
+        else:
+            result = df[df["employee_email"] == st.session_state.user_email]
+
+        # Display all records with an option to search by phone number
+        st.dataframe(result)
+        
 
 # Tab 5: Admin Management Module
 with st.sidebar:
