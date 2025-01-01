@@ -155,8 +155,18 @@ with tab1:
             acdb_box = st.selectbox("ACDB Box", ["ACDB Type 1", "ACDB Type 2"])
             insulation_material = st.selectbox("Insulation Material", ["Material 1", "Material 2"])
             panel_cleaning_system = st.selectbox("Panel Cleaning System", ["System A", "System B"])
-            employee_name = st.selectbox("Employee Name", ["Employee 1", "Employee 2", "Employee 3"])
-            employee_email = st.selectbox("Employee Email Address", ["emp1@example.com", "emp2@example.com", "emp3@example.com"])
+             # Employee Name and Email fields - Filtered based on logged-in user
+            if st.session_state.user_email == "admin":
+                employee_names = df["employee_name"].unique()
+                employee_emails = df["employee_email"].unique()
+            else:
+                # Filter employee by the logged-in user's email
+                employee_names = df[df["employee_email"] == st.session_state.user_email]["employee_name"].unique()
+                employee_emails = df[df["employee_email"] == st.session_state.user_email]["employee_email"].unique()
+
+            # Employee dropdowns
+            employee_name = st.selectbox("Employee Name", employee_names)
+            employee_email = st.selectbox("Employee Email Address", employee_emails)
 
             # Form submission
             submitted = st.form_submit_button("Save")
