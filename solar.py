@@ -1,3 +1,10 @@
+from reportlab.pdfgen import canvas
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import letter, inch
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+
+
 import streamlit as st
 import pandas as pd
 import requests
@@ -31,42 +38,156 @@ def load_data():
         ])
 
 # Function to export the data to a PDF
+
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.colors import HexColor  # Import HexColor for hex codes
+from io import BytesIO
+import streamlit as st
+
 def export_to_pdf(data):
     try:
+        # Create PDF output buffer
         pdf_output = BytesIO()
-        pdf = SimpleDocTemplate(pdf_output, pagesize=letter)
+        pdf = SimpleDocTemplate(pdf_output, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=80, bottomMargin=30)
         elements = []
 
-        # Prepare data for the table
-        data_list = data.values.tolist()
-        columns = data.columns.tolist()
-        data_table = [columns] + data_list
+        # Title and header for invoice
+        title = "Customer Invoice"
+        subtitle = "Solar Panel Installation Details"
 
-        # Create table
-        table = Table(data_table)
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ]))
+        # Company Information
+        company_name = "SolarTech Solutions"
+        company_address = "123 Solar St, Solar City, SC 12345"
+        company_phone = "(123) 456-7890"
+        company_email = "contact@solartech.com"
 
-        elements.append(table)
+        # Define professional styles
+        styles = getSampleStyleSheet()
+
+        # Custom styles for the header
+        header_title_style = ParagraphStyle(
+            'HeaderTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            textColor=HexColor("#1877F2"),  # Facebook blue using HexColor
+            alignment=1,  # Centered text
+            spaceAfter=12,  # Space after title
+            fontName="Helvetica-Bold"
+        )
+        header_subtitle_style = ParagraphStyle(
+            'HeaderSubtitle',
+            parent=styles['Heading2'],
+            fontSize=16,
+            textColor=colors.black,
+            alignment=1,  # Centered text
+            spaceAfter=12,  # Space after subtitle
+            fontName="Helvetica"
+        )
+        company_style = ParagraphStyle(
+            'CompanyInfo',
+            fontSize=12,
+            textColor=colors.black,
+            alignment=1,  # Centered text
+            spaceAfter=6  # Space after company name/address
+        )
+        company_contact_style = ParagraphStyle(
+            'CompanyContact',
+            fontSize=10,
+            textColor=colors.black,
+            alignment=1,  # Centered text
+            spaceAfter=18  # Space after contact info
+        )
+
+        # Add Title and Subtitle (using Paragraph for better styling)
+        def add_header():
+            elements.append(Paragraph(title, header_title_style))  # Title
+            elements.append(Spacer(1, 6))  # Spacer between title and subtitle
+            elements.append(Paragraph(subtitle, header_subtitle_style))  # Subtitle
+            elements.append(Spacer(1, 12))  # Space between subtitle and company info
+
+            # Add Company Info with customized styling
+            elements.append(Paragraph(f"<b>{company_name}</b>", company_style))  # Company Name
+            elements.append(Paragraph(company_address, company_style))  # Address
+            elements.append(Paragraph(f"Phone: <b>{company_phone}</b>", company_contact_style))  # Phone
+            elements.append(Paragraph(f"Email: <b>{company_email}</b>", company_contact_style))  # Email
+            elements.append(Spacer(1, 24))  # Add space after company contact
+
+        # Loop through each customer and add their details to the PDF
+        for index, row in data.iterrows():
+            if index > 0:
+                elements.append(PageBreak())  # Start a new page for each customer
+
+            # Add Header on each page
+            add_header()
+
+            # Add Customer Details (Name, Address, Email, etc.)
+            elements.append(Paragraph("<b>Customer Details:</b>", styles['Heading3']))
+
+            customer_details = [
+                ("Date:", row['date']),
+                ("Name:", row['name']),
+                ("Address:", row['address']),
+                ("Phone:", row['phone']),
+                ("Email:", row['email']),
+                ("Panel Capacity:", row['panel_capacity']),
+                ("Solar Panel Company:", row['solar_panel_company']),
+                ("Solar Panel Type:", row['solar_panel_type']),
+                ("Solar Panel Category:", row['solar_panel_category']),
+                ("Inverter Company:", row['inverter_company']),
+                ("Inverter Category:", row['inverter_category']),
+                ("Inverter Phase:", row['inverter_phase']),
+                ("Inverter Type:", row['inverter_type']),
+                ("Mounting Roof:", row['mounting_roof']),
+                ("Mounting Material:", row['mounting_material']),
+                ("Fixing Material:", row['fixing_material']),
+                ("Earthing:", row['earthing']),
+                ("Wiring:", row['wiring']),
+                ("DCDB Box:", row['dcdb_box']),
+                ("ACDB Box:", row['acdb_box']),
+                ("Insulation Material:", row['insulation_material']),
+                ("Panel Cleaning System:", row['panel_cleaning_system']),
+                ("Employee Name:", row['employee_name']),
+                ("Employee Email:", row['employee_email'])
+            ]
+
+            # Add a table for customer details to make it more structured
+            table_data = []
+            for label, value in customer_details:
+                table_data.append([label, value])
+
+            # Create table with styling
+            table = Table(table_data, colWidths=[200, 300], rowHeights=30)
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), HexColor("#1877F2")),  # Header Row Background
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),  # Header Row Text Color
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.black)
+            ]))
+
+            elements.append(table)
+            elements.append(Spacer(1, 24))  # Add space after table
+
+        # Build the PDF
         pdf.build(elements)
 
+        # Provide a download link
         st.success("PDF generated successfully! Click the button below to download it.")
         st.download_button(
-            label="Download PDF",
+            label="Download Invoice PDF",
             data=pdf_output.getvalue(),
-            file_name="customer_records.pdf",
+            file_name="customer_invoice.pdf",
             mime="application/pdf"
         )
 
     except Exception as e:
         st.error(f"Error while generating PDF: {str(e)}")
+
 
 # Load data
 df = load_data()
