@@ -249,7 +249,7 @@ if not st.session_state.logged_in:
             st.session_state.user_email = "admin"
             st.session_state.user_pass = "admin123"
             st.success("Logged in as Admin!")
-            st.experimental_rerun()  # Force rerun to reflect login
+            #st.experimental_rerun()  # Force rerun to reflect login
 
         employee_data = load_pass()
         if user_email in employee_data['Email'].values:
