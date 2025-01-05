@@ -10,6 +10,7 @@ from io import BytesIO
 
 # GitHub file raw URL (replace with your GitHub raw file URL)
 GITHUB_REPO_URL = "https://raw.githubusercontent.com/akshaysharma001/SolarApp/main/customer_data.xlsx"
+file_path2 = "https://raw.githubusercontent.com/akshaysharma001/SolarApp/main/Employees.xlsx"
 
 # Function to load data from GitHub
 def load_data():
@@ -30,6 +31,22 @@ def load_data():
             "acdb_box", "insulation_material", "panel_cleaning_system",
             "employee_name", "employee_email"
         ])
+
+
+# Function to load data from GitHub
+def load_pass():
+    try:
+        response = requests.get(file_path2)
+        response.raise_for_status()
+        file_content = BytesIO(response.content)
+        return pd.read_excel(file_content)
+    except Exception as e:
+        st.error(f"Error loading data from GitHub: {str(e)}")
+        # Return an empty DataFrame with predefined columns if file doesn't exist
+        return pd.DataFrame(columns=[
+            "Name", "Email", "Password"
+        ])
+
 
 # Function to export the data to a PDF
 
@@ -185,12 +202,20 @@ def export_to_pdf(data):
 
 
 # Load data
+# Load data
 df = load_data()
+df1 = load_pass()
 
 # Normalize phone number column
 df["phone"] = df["phone"].astype(str).str.strip()
 
-# Your existing Streamlit code follows...
+# Initialize session state keys
+if "user_email" not in st.session_state:
+    st.session_state.user_email = None
+if "user_password" not in st.session_state:
+    st.session_state.user_password = None
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
 
 # Streamlit app title
 st.title("Customer Solar Panel Data Management System")
@@ -200,60 +225,52 @@ import io
 def export_to_excel(data):
     # Create an in-memory Excel file
     excel_output = io.BytesIO()
-    
     with pd.ExcelWriter(excel_output, engine='openpyxl') as writer:
-        # Write the DataFrame to the Excel writer
         data.to_excel(writer, index=False, sheet_name='Customer Data')
-    
-    # Seek to the beginning of the file after writing
     excel_output.seek(0)
     return excel_output
-
-
 
 # Initialize session state to store search results and user information
 if "search_results" not in st.session_state:
     st.session_state.search_results = pd.DataFrame()
 
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-    st.session_state.user_email = ""
-
 # Login Form
 if not st.session_state.logged_in:
     st.sidebar.header("Login")
-    user_email = st.sidebar.text_input("Enter your Email ID")
-    login_button = st.sidebar.button("Login")
-    
+    user_email = st.sidebar.text_input("Enter your Email ID", key="login_email")
+    user_password = st.sidebar.text_input("Enter your Password", type="password", key="login_password")
+    login_button = st.sidebar.button("Login", key="login_button")
+
     if login_button:
-        # Check for valid user (Here you can validate against a pre-defined list of users or a database)
+        # Load employee data to validate
         admin_email = "admin@example.com"
-        if user_email == admin_email:
+        if user_email == admin_email and user_password == "admin123":
             st.session_state.logged_in = True
             st.session_state.user_email = "admin"
+            st.session_state.user_pass = "admin123"
             st.success("Logged in as Admin!")
+            st.experimental_rerun()  # Force rerun to reflect login
 
-
-            
-        elif user_email != "":
-            # Assuming employee records are associated with their email
-            if user_email in df['employee_email'].values:
+        employee_data = load_pass()
+        if user_email in employee_data['Email'].values:
+            correct_password = employee_data.loc[employee_data['Email'] == user_email, 'Password'].values[0]
+            if user_password == correct_password:
                 st.session_state.logged_in = True
                 st.session_state.user_email = user_email
-                st.success(f"Logged in as {user_email}")
+                st.success(f"Logged in as {user_email}!")
+                st.experimental_rerun()  # Force rerun to reflect login
             else:
-                st.error("Invalid Email ID")
+                st.error("Invalid password")
+        else:
+            if user_email != admin_email:
+                st.error("Email not found")
 else:
-    # Display user-specific message
     st.sidebar.write(f"Logged in as: {st.session_state.user_email}")
-    
-    # Logout Button
-    if st.sidebar.button("Logout"):
+    if st.sidebar.button("Logout", key="logout_button"):
         st.session_state.logged_in = False
         st.session_state.user_email = ""
         st.success("Logged out successfully!")
-
-
+        st.experimental_rerun()  # Force rerun to reflect logout
 
 # Tabs for different functionalities
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["Add Customer", "Search Customer by Name", "Search by Phone Number", "View All Records","Download Excel Database"])
@@ -291,8 +308,8 @@ with tab1:
             panel_cleaning_system = st.selectbox("Panel Cleaning System", ["System A", "System B"])
              # Employee Name and Email fields - Filtered based on logged-in user
             if st.session_state.user_email == "admin":
-                employee_names = df["employee_name"].unique()
-                employee_emails = df["employee_email"].unique()
+                employee_names = ["Admin"]
+                employee_emails = ["admin@example.com"]
             else:
                 # Filter employee by the logged-in user's email
                 employee_names = df[df["employee_email"] == st.session_state.user_email]["employee_name"].unique()
@@ -453,7 +470,7 @@ with tab5:
     if st.session_state.logged_in:
         st.header("You can download the customer database in Excel format")
 
-        if st.session_state.user_email == "admin":
+        if st.session_state.user_email == "admin" :
                 # Add a button for downloading Excel file
             if st.button("Download Customer Data as Excel"):
                     excel_file1 = export_to_excel(df)
